@@ -1,6 +1,6 @@
 import os
 from elasticsearch import Elasticsearch
-from .worker.celery_app import celery_app
+from worker.celery_app import celery_app
 from dotenv import load_dotenv
 
 load_dotenv()
