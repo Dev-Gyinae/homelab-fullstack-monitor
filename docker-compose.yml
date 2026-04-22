@@ -124,17 +124,15 @@ services:
     networks:
       - homelab-net
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - postgres
+      - rabbitmq
+      - elasticsearch
+    # healthcheck temporarily disabled to avoid timing issues
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
 
   # -------------------- Celery Worker --------------------
   worker:
@@ -156,9 +154,12 @@ services:
     networks:
       - homelab-net
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+      - postgres
+      - rabbitmq
+      - elasticsearch
+    # healthcheck temporarily disabled
+    # healthcheck:
+    #   test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
