@@ -1,14 +1,21 @@
 version: '3.8'
 
+# Networks
 networks:
   homelab-net:
     driver: bridge
+    name: homelab-net
 
+# Named volumes for persistent data
 volumes:
   postgres_data:
+    name: homelab-postgres-data
   rabbitmq_data:
+    name: homelab-rabbitmq-data
   elasticsearch_data:
+    name: homelab-elasticsearch-data
   uptime_kuma_data:
+    name: homelab-uptime-kuma-data
 
 services:
   # -------------------- PostgreSQL --------------------
@@ -27,7 +34,7 @@ services:
     networks:
       - homelab-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-homelab}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-homelab} -d ${POSTGRES_DB:-homelab_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
