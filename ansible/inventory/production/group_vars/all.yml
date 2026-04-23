@@ -1,0 +1,17 @@
+---
+docker_edition: 'ce'
+docker_compose_version: "2.24.6"
+swarm_iface: "eth0"
+stack_name: "homelab"
+stack_compose_file: "{{ playbook_dir }}/../../docker-compose.yml"
+
+postgres_user: homelab
+postgres_password: homelab123
+postgres_db: homelab_db
+
+rabbitmq_user: admin
+rabbitmq_password: admin123
+rabbitmq_cookie: secret-cookie
+
+swarmpit_db_user: admin
+swarmpit_db_pass: admin123

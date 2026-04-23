@@ -1,0 +1,128 @@
+---
+- name: Deploy homelab stack to Docker Swarm
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: "docker-{{ docker_edition }}"
+        state: latest
+        update_cache: yes
+
+    - name: Install Docker Compose plugin
+      apt:
+        name: docker-compose-plugin
+        state: latest
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Install Python Docker SDK
+      pip:
+        name:
+          - docker
+          - jsondiff
+        state: present
+
+    - name: Check if Swarm is already initialised
+      community.docker.docker_swarm_info:
+      register: swarm_info
+      ignore_errors: yes
+
+    - name: Initialise Docker Swarm
+      community.docker.docker_swarm:
+        state: present
+        advertise_addr: "{{ ansible_facts[swarm_iface]['ipv4']['address'] }}"
+      when: swarm_info.failed or not swarm_info.swarm_facts
+
+    - name: Ensure target directory exists
+      file:
+        path: "/home/{{ ansible_user }}/homelab-fullstack-monitor"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Create .env file
+      copy:
+        dest: "/home/{{ ansible_user }}/homelab-fullstack-monitor/.env"
+        content: |
+          POSTGRES_USER={{ postgres_user }}
+          POSTGRES_PASSWORD={{ postgres_password }}
+          POSTGRES_DB={{ postgres_db }}
+          RABBITMQ_USER={{ rabbitmq_user }}
+          RABBITMQ_PASS={{ rabbitmq_password }}
+          RABBITMQ_COOKIE={{ rabbitmq_cookie }}
+          SWARMPIT_DB_USER={{ swarmpit_db_user }}
+          SWARMPIT_DB_PASS={{ swarmpit_db_pass }}
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ stack_compose_file }}"
+        dest: "/home/{{ ansible_user }}/homelab-fullstack-monitor/docker-compose.yml"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Deploy stack
+      community.docker.docker_stack:
+        state: present
+        name: "{{ stack_name }}"
+        compose:
+          - "/home/{{ ansible_user }}/homelab-fullstack-monitor/docker-compose.yml"
+      environment:
+        POSTGRES_USER: "{{ postgres_user }}"
+        POSTGRES_PASSWORD: "{{ postgres_password }}"
+        POSTGRES_DB: "{{ postgres_db }}"
+        RABBITMQ_USER: "{{ rabbitmq_user }}"
+        RABBITMQ_PASS: "{{ rabbitmq_password }}"
+        RABBITMQ_COOKIE: "{{ rabbitmq_cookie }}"
+        SWARMPIT_DB_USER: "{{ swarmpit_db_user }}"
+        SWARMPIT_DB_PASS: "{{ swarmpit_db_pass }}"
+
+    - name: Wait for services
+      pause:
+        seconds: 30
+
+    - name: Display stack services
+      command: docker stack services {{ stack_name }}
+      register: services
+      changed_when: false
+
+    - debug:
+        var: services.stdout_lines

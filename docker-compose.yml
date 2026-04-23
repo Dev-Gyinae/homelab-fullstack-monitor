@@ -1,12 +1,10 @@
 version: '3.8'
 
-# Networks
 networks:
   homelab-net:
-    driver: bridge
+    driver: overlay
     name: homelab-net
 
-# Named volumes for persistent data
 volumes:
   postgres_data:
     name: homelab-postgres-data
@@ -16,17 +14,18 @@ volumes:
     name: homelab-elasticsearch-data
   uptime_kuma_data:
     name: homelab-uptime-kuma-data
+  swarmpit_db_data:
+    name: homelab-swarmpit-db-data
 
 services:
-  # -------------------- PostgreSQL --------------------
   postgres:
     image: postgres:16-alpine
     container_name: homelab-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-homelab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-homelab123}
-      POSTGRES_DB: ${POSTGRES_DB:-homelab_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -34,26 +33,25 @@ services:
     networks:
       - homelab-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-homelab} -d ${POSTGRES_DB:-homelab_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # -------------------- RabbitMQ --------------------
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: homelab-rabbitmq
     hostname: rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_COOKIE:-secret-cookie}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_COOKIE}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports:
-      - "5672:5672"      # AMQP
-      - "15672:15672"    # Management UI
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - homelab-net
     healthcheck:
@@ -62,7 +60,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # -------------------- Elasticsearch --------------------
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: homelab-elasticsearch
@@ -76,7 +73,6 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
-      - "9300:9300"
     networks:
       - homelab-net
     healthcheck:
@@ -85,7 +81,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # -------------------- Uptime Kuma --------------------
   uptime-kuma:
     image: louislam/uptime-kuma:latest
     container_name: homelab-uptime-kuma
@@ -102,21 +97,21 @@ services:
       timeout: 10s
       retries: 3
 
-  # -------------------- Backend API (FastAPI) --------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: homelab-backend:latest
     container_name: homelab-backend
     restart: unless-stopped
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - CELERY_BROKER_URL=pyamqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672//
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      CELERY_BROKER_URL: pyamqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672//
+      ELASTICSEARCH_URL: http://elasticsearch:9200
     volumes:
       - ./backend:/app
     ports:
@@ -127,29 +122,22 @@ services:
       - postgres
       - rabbitmq
       - elasticsearch
-    # healthcheck temporarily disabled
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 10
-    #   start_period: 20s
 
-  # -------------------- Celery Worker --------------------
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile.worker
+    image: homelab-worker:latest
     container_name: homelab-worker
     restart: unless-stopped
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - CELERY_BROKER_URL=pyamqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672//
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      CELERY_BROKER_URL: pyamqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672//
+      ELASTICSEARCH_URL: http://elasticsearch:9200
     volumes:
       - ./backend:/app
     networks:
@@ -158,19 +146,12 @@ services:
       - postgres
       - rabbitmq
       - elasticsearch
-    # healthcheck temporarily disabled
-    # healthcheck:
-    #   test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 10
-    #   start_period: 20s
 
-  # -------------------- Frontend (React + Nginx) --------------------
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: homelab-frontend:latest
     container_name: homelab-frontend
     restart: unless-stopped
     ports:
@@ -179,10 +160,50 @@ services:
       - homelab-net
     depends_on:
       - backend
-    # healthcheck temporarily disabled
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost/"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 5
-    #   start_period: 10s
+
+  swarmpit-app:
+    image: swarmpit/swarmpit:latest
+    container_name: homelab-swarmpit-app
+    restart: unless-stopped
+    environment:
+      SWARMPIT_DB: http://swarmpit-db:5984
+      SWARMPIT_INFLUXDB: http://influxdb:8086
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8888:8080"
+    networks:
+      - homelab-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  swarmpit-db:
+    image: couchdb:2.3
+    container_name: homelab-swarmpit-db
+    restart: unless-stopped
+    volumes:
+      - swarmpit_db_data:/opt/couchdb/data
+    environment:
+      COUCHDB_USER: ${SWARMPIT_DB_USER}
+      COUCHDB_PASSWORD: ${SWARMPIT_DB_PASS}
+    networks:
+      - homelab-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  swarmpit-agent:
+    image: swarmpit/agent:latest
+    container_name: homelab-swarmpit-agent
+    restart: unless-stopped
+    environment:
+      DOCKER_API_VERSION: "1.41"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - homelab-net
+    deploy:
+      mode: global
