@@ -124,15 +124,18 @@ services:
     networks:
       - homelab-net
     depends_on:
-      - postgres
-      - rabbitmq
-      - elasticsearch
-    # healthcheck temporarily disabled to avoid timing issues
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   # -------------------- Celery Worker --------------------
   worker:
@@ -154,12 +157,36 @@ services:
     networks:
       - homelab-net
     depends_on:
-      - postgres
-      - rabbitmq
-      - elasticsearch
-    # healthcheck temporarily disabled
-    # healthcheck:
-    #   test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  # -------------------- Frontend (React + Nginx) --------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: homelab-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - homelab-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
