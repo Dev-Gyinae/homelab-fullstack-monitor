@@ -1,6 +1,10 @@
 # Build stage
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Force empty API base so requests use relative paths
+ENV VITE_API_URL=""
+
 COPY package*.json ./
 RUN npm ci
 COPY . .
