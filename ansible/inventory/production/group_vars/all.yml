@@ -1,7 +1,6 @@
 ---
 docker_edition: 'ce'
 docker_compose_version: "2.24.6"
-swarm_iface: "eth0"
 stack_name: "homelab"
 stack_compose_file: "{{ playbook_dir }}/../../docker-compose.yml"
 

@@ -1,81 +1,36 @@
 ---
-- name: Deploy homelab stack to Docker Swarm
+- name: Deploy homelab stack to Docker Swarm (Minimal)
   hosts: all
   become: yes
   gather_facts: yes
 
   tasks:
-    - name: Install required system packages
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - lsb-release
-          - python3-pip
-        state: present
-        update_cache: yes
-
-    - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add Docker repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        state: present
-
-    - name: Install Docker
-      apt:
-        name: "docker-{{ docker_edition }}"
-        state: latest
-        update_cache: yes
-
-    - name: Install Docker Compose plugin
-      apt:
-        name: docker-compose-plugin
-        state: latest
-
-    - name: Ensure Docker service is running
+    - name: Ensure Docker is running
       service:
         name: docker
         state: started
         enabled: yes
 
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
+    - name: Check if Swarm is already active
+      command: docker info --format '{{ '{{' }}.Swarm.LocalNodeState{{ '}}' }}'
+      register: swarm_state
+      changed_when: false
 
-    - name: Install Python Docker SDK
-      pip:
-        name:
-          - docker
-          - jsondiff
-        state: present
+    - name: Initialize Docker Swarm (if not active)
+      command: docker swarm init --advertise-addr {{ ansible_default_ipv4.address }}
+      when: swarm_state.stdout != 'active'
+      register: swarm_init
+      changed_when: swarm_init.rc == 0
 
-    - name: Check if Swarm is already initialised
-      community.docker.docker_swarm_info:
-      register: swarm_info
-      ignore_errors: yes
-
-    - name: Initialise Docker Swarm
-      community.docker.docker_swarm:
-        state: present
-        advertise_addr: "{{ ansible_facts[swarm_iface]['ipv4']['address'] }}"
-      when: swarm_info.failed or not swarm_info.swarm_facts
-
-    - name: Ensure target directory exists
+    - name: Create project directory on remote host
       file:
         path: "/home/{{ ansible_user }}/homelab-fullstack-monitor"
         state: directory
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
+        mode: '0755'
 
-    - name: Create .env file
+    - name: Create .env file on remote host
       copy:
         dest: "/home/{{ ansible_user }}/homelab-fullstack-monitor/.env"
         content: |
@@ -91,7 +46,7 @@
         group: "{{ ansible_user }}"
         mode: '0600'
 
-    - name: Copy docker-compose.yml
+    - name: Copy docker-compose.yml to remote host
       copy:
         src: "{{ stack_compose_file }}"
         dest: "/home/{{ ansible_user }}/homelab-fullstack-monitor/docker-compose.yml"
@@ -99,12 +54,9 @@
         group: "{{ ansible_user }}"
         mode: '0644'
 
-    - name: Deploy stack
-      community.docker.docker_stack:
-        state: present
-        name: "{{ stack_name }}"
-        compose:
-          - "/home/{{ ansible_user }}/homelab-fullstack-monitor/docker-compose.yml"
+    - name: Deploy stack using Docker Swarm
+      command: >
+        docker stack deploy -c /home/{{ ansible_user }}/homelab-fullstack-monitor/docker-compose.yml {{ stack_name }}
       environment:
         POSTGRES_USER: "{{ postgres_user }}"
         POSTGRES_PASSWORD: "{{ postgres_password }}"
@@ -114,12 +66,14 @@
         RABBITMQ_COOKIE: "{{ rabbitmq_cookie }}"
         SWARMPIT_DB_USER: "{{ swarmpit_db_user }}"
         SWARMPIT_DB_PASS: "{{ swarmpit_db_pass }}"
+      register: stack_deploy
+      changed_when: stack_deploy.rc == 0
 
-    - name: Wait for services
+    - name: Wait for services to stabilise
       pause:
-        seconds: 30
+        seconds: 20
 
-    - name: Display stack services
+    - name: Show running stack services
       command: docker stack services {{ stack_name }}
       register: services
       changed_when: false
