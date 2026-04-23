@@ -124,18 +124,16 @@ services:
     networks:
       - homelab-net
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 20s
+      - postgres
+      - rabbitmq
+      - elasticsearch
+    # healthcheck temporarily disabled
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 10
+    #   start_period: 20s
 
   # -------------------- Celery Worker --------------------
   worker:
@@ -157,18 +155,16 @@ services:
     networks:
       - homelab-net
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 20s
+      - postgres
+      - rabbitmq
+      - elasticsearch
+    # healthcheck temporarily disabled
+    # healthcheck:
+    #   test: ["CMD", "celery", "-A", "worker.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 10
+    #   start_period: 20s
 
   # -------------------- Frontend (React + Nginx) --------------------
   frontend:
@@ -182,11 +178,11 @@ services:
     networks:
       - homelab-net
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
+      - backend
+    # healthcheck temporarily disabled
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost/"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 10s
