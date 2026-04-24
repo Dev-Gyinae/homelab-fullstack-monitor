@@ -162,7 +162,7 @@ homelab-fullstack-monitor/
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/<your-username>/homelab-fullstack-monitor.git
+git clone https://github.com/Dev-Gyinae/homelab-fullstack-monitor.git
 cd homelab-fullstack-monitor
 ```
 
