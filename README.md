@@ -6,8 +6,41 @@
 
 ## Screenshots
 
-> _Screenshots coming soon — UI previews of TaskFlow, Swarmpit, RabbitMQ Management, and Uptime Kuma._
+<img width="1366" height="768" alt="images" src="https://github.com/user-attachments/assets/d5811545-55f7-4593-a47c-229f26e51f5c" />
+- Docker Images
 
+<img width="1366" height="768" alt="swarm_ans1" src="https://github.com/user-attachments/assets/03882412-e9e5-4eb9-9199-d86fd0e9d426" />
+<img width="1366" height="768" alt="swarm_ans2" src="https://github.com/user-attachments/assets/e4a0158a-fb9e-411d-aca5-bb16caa3f40a" />
+- Ansible setup
+
+<img width="1366" height="768" alt="elastic_backend" src="https://github.com/user-attachments/assets/3455511a-875a-4ba2-bb33-a34b89bf9ba2" />
+ - Elastic Search Backend API service
+
+<img width="1366" height="768" alt="final_output" src="https://github.com/user-attachments/assets/7c1271c3-60e6-404b-bd8d-dedadb849da1" />
+ - Swarmpit from the CLI
+
+<img width="1366" height="768" alt="kuma_final" src="https://github.com/user-attachments/assets/730b9037-aca1-46f6-83bd-b355e75f7699" />
+ - Uptime Kuma
+
+<img width="1366" height="768" alt="Rabbit_cue" src="https://github.com/user-attachments/assets/4a402b9c-bd76-4da6-a61a-ef36f72a4517" />
+ - Message Broker - RabbitMQ
+
+<img width="1366" height="768" alt="swarm_networks" src="https://github.com/user-attachments/assets/7721a5f9-cd48-4bea-b4aa-c68ba52ca679" />
+ - Networks from Swarm UI
+
+<img width="1366" height="768" alt="swarmpit" src="https://github.com/user-attachments/assets/e7745335-a161-430c-a5f8-070ec1f9fb86" />
+- Swarm UI with Services 
+
+<img width="1366" height="768" alt="swarmpit_servicedetails" src="https://github.com/user-attachments/assets/82cf4266-cf3f-4deb-abf5-5601d40f9476" />
+- Services troubleshooting
+
+<img width="1366" height="768" alt="final" src="https://github.com/user-attachments/assets/3d03fdac-a1e1-4c4e-a5ec-e91b50c3f16f" />
+<img width="1366" height="768" alt="final_output" src="https://github.com/user-attachments/assets/4bd56dd3-c4bc-46ed-a055-64dc1023a8c3" />
+- Services after troubleshooting and restart
+
+<img width="1366" height="768" alt="frontend_ui" src="https://github.com/user-attachments/assets/779bd1d3-2b82-439d-a679-38a5e72b3874" />
+- Frontend UI
+  
 ---
 
 ## Table of Contents
